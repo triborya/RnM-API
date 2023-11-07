@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0px;
+        padding: 0px;
+      }
+
+      body {
+        background: #111f2c;
+      }
+
+      .m {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .cs {
+        background: #306476;
+        width: 900px;
+        padding: 20px;
+        margin-top: 20px;
+        margin-bottom: 80px;
+        border-radius: 20px;
+        color: white;
+      }
+
+      .i {
+        display: flex;
+      }
+      .charimg {
+        /* margin-bottom: 20px; */
+        margin-right: 20px;
+        border-radius: 20px;
+        width: 160px;
+        height: 200px;
+      }
+      .btn {
+        width: 240px;
+        height: 70px;
+        border-radius: 50px;
+        margin: 30px;
+      }
+      p {
+        margin-top: 30px;
+        margin-bottom: 30px;
+      }
+      h2 {
+        color: #9bf572;
+      }
+      .showMoreBtn {
+        background: none;
+        border: none;
+        color: #7fe6f6;
+        font-size: 17px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="m">
+      <div class="f"><img src="Rick_and_Morty.png" alt="" /></div>
+      <div class="c"></div>
+      <div class="pagination">
+        <button class="btn" id="prevBtn" disabled>Previous</button>
+        <button class="btn" id="nextBtn">Next</button>
+      </div>
+    </div>
+    <script>
+      let cont = document.querySelector(".c");
+      let nextBtn = document.getElementById("nextBtn");
+      let prevBtn = document.getElementById("prevBtn");
+      let currentPage = 1;
+
+      function fetchLocation(url) {
+        return fetch(url).then((res) => res.json());
+      }
+
+      function fetchEpisodes(episodeUrls) {
+        let episodePromises = episodeUrls.map((url) =>
+          fetch(url).then((res) => res.json())
+        );
+        return Promise.all(episodePromises);
+      }
+
+      function fetchData(page) {
+        fetch(`https://rickandmortyapi.com/api/character?page=${page}`)
+          .then((response) => response.json())
+          .then((data) => {
+            cont.innerHTML = ""; // Clear the previous content
+            data.results.forEach((element) => {
+              // Fetch origin, location, and episodes details
+              Promise.all([
+                fetchLocation(element.origin.url),
+                fetchLocation(element.location.url),
+                fetchEpisodes(element.episode),
+              ]).then(([originData, locationData, episodesData]) => {
+                let episodeNamesToShow = episodesData
+                  .slice(0, 10)
+                  .map((ep) => ep.name)
+                  .join(", ");
+                let isShowMoreRequired = episodesData.length > 10;
+
+                // Insert character, their origin, location, and episodes into the page
+                cont.insertAdjacentHTML(
+                  "beforeend",
+                  `
+                            <div class="cs">
+                                <div class="i">
+                                    <img class="charimg" src="${
+                                      element.image
+                                    }"/>
+                                    <div>
+                                        <h2>${element.name}</h2>
+                                        <p>${element.species} - ${
+                    element.gender
+                  }</p>
+                                        <p><span style="color: #87ebff;">Origin:</span> ${
+                                          originData.name
+                                        } (${originData.type} in ${
+                    originData.dimension
+                  }), ${originData.residents.length} inhabitants</p>
+                                        <p><span style="color: #87ebff;">Location:</span> ${
+                                          locationData.name
+                                        } (${locationData.type} in ${
+                    locationData.dimension
+                  }), ${locationData.residents.length} inhabitants</p>
+                                    </div>
+                                </div>
+                                <div class="p">
+                                    <p><span style="color: #87ebff;">Played in ${
+                                      element.episode.length
+                                    } episodes:</span> ${episodeNamesToShow}
+                                        ${
+                                          isShowMoreRequired
+                                            ? '<span class="more-episodes" style="display: none;">, ' +
+                                              episodesData
+                                                .slice(10)
+                                                .map((ep) => ep.name)
+                                                .join(", ") +
+                                              '</span> <button class="showMoreBtn">Show More</button>'
+                                            : ""
+                                        }
+                                    </p>
+                                </div>
+                            </div>
+                        `
+                );
+
+                if (isShowMoreRequired) {
+                  let showMoreBtn =
+                    cont.lastElementChild.querySelector(".showMoreBtn");
+                  let moreEpisodesSpan =
+                    cont.lastElementChild.querySelector(".more-episodes");
+
+                  showMoreBtn.addEventListener("click", function () {
+                    if (moreEpisodesSpan.style.display === "none") {
+                      moreEpisodesSpan.style.display = "inline";
+                      showMoreBtn.innerText = "Show Less";
+                    } else {
+                      moreEpisodesSpan.style.display = "none";
+                      showMoreBtn.innerText = "Show More";
+                    }
+                  });
+                }
+              });
+            });
+
+            if (data.info.prev) {
+              prevBtn.disabled = false;
+              prevBtn.dataset.url = data.info.prev;
+            } else {
+              prevBtn.disabled = true;
+            }
+
+            if (data.info.next) {
+              nextBtn.disabled = false;
+              nextBtn.dataset.url = data.info.next;
+            } else {
+              nextBtn.disabled = true;
+            }
+          });
+      }
+
+      nextBtn.addEventListener("click", () => {
+        currentPage++;
+        fetchData(currentPage);
+      });
+
+      prevBtn.addEventListener("click", () => {
+        currentPage--;
+        fetchData(currentPage);
+      });
+
+      fetchData(currentPage); // Fetch data for the initial page
+    </script>
+  </body>
+</html>
